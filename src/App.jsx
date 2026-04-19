@@ -1,32 +1,58 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { AuthProvider } from "./context/AuthProvider";
+import { useAuth } from "./context/authContext";
+import GamePage from "./pages/GamePage";
+import GamesPage from "./pages/GamesPage";
+import SignInPage from "./pages/SignInPage";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-);
-
-function App() {
-  const [boards, setBoards] = useState([]);
+function AppShell() {
+  const { user, isInitializing, authError, clearAuthError } = useAuth();
+  const [activeGameId, setActiveGameId] = useState("");
 
   useEffect(() => {
-    getBoards();
-  }, []);
+    if (!user) {
+      setActiveGameId("");
+    }
+  }, [user]);
 
-  async function getBoards() {
-    const { data } = await supabase.from("games").select();
-    setBoards(data);
+  if (isInitializing) {
+    return (
+      <main className="page page--centered">
+        <section className="panel">
+          <p className="eyebrow">qat cafe</p>
+          <h1>Loading...</h1>
+          <p className="panel-copy">Checking your local session.</p>
+        </section>
+      </main>
+    );
   }
 
   return (
     <>
-      <h1>Qat Cafe</h1>
-      <ul>
-        {boards.map((board) => (
-          <li key={board.id}>{board.id}</li>
-        ))}
-      </ul>
+      {authError ? (
+        <div className="top-alert" role="alert">
+          <span>{authError}</span>
+          <button type="button" className="link-button" onClick={clearAuthError}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {user && activeGameId ? (
+        <GamePage gameId={activeGameId} onBack={() => setActiveGameId("")} />
+      ) : null}
+      {user && !activeGameId ? (
+        <GamesPage onOpenGame={(gameId) => setActiveGameId(String(gameId))} />
+      ) : null}
+      {!user ? <SignInPage /> : null}
     </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 
